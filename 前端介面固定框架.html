@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 
 <head>
@@ -113,1000 +113,162 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
     <script>
-        const pageTemplates = {
-            "儀錶板": `
-                <div class="page-title">儀錶板</div>
+        // ===== 採購管理功能（全域，供 $.load 載入的 HTML 內 onclick 使用） =====
+        let purchaseEditRow = null;
 
-                <!-- ██ 第一層：業務概攬 / 財報表(月報) / 車輛概覽 ██ -->
-                <div class="row g-4 mb-4">
+        function openPurchaseAdd() {
+            purchaseEditRow = null;
+            $('#purchaseModalTitle').html('<i class="fa-solid fa-cart-shopping me-2"></i>新增採購記錄');
+            $('#pur-brand, #pur-model, #pur-year, #pur-cc, #pur-buy, #pur-cost, #pur-sell, #pur-plate, #pur-color, #pur-note').val('');
+            $('#pur-cert').val('可認證');
+            $('#pur-date').val('');
+        }
 
-                    <!-- ── 業務概攬 ── -->
-                    <div class="col-12 col-xl-4">
-                        <div class="card-box h-100">
-                            <h5 class="fw-bold mb-3 border-bottom pb-2">
-                                <i class="fa-solid fa-briefcase me-2 text-primary"></i>業務概攬
-                            </h5>
+        function openPurchaseEdit(btn) {
+            purchaseEditRow = $(btn).closest('tr')[0];
+            const $cells = $(purchaseEditRow).find('td');
+            $('#purchaseModalTitle').html('<i class="fa-solid fa-pen me-2"></i>編輯採購記錄');
+            $('#pur-plate').val($cells.eq(1).text().trim());
+            $('#pur-brand').val($cells.eq(2).text().trim());
+            $('#pur-model').val($cells.eq(3).text().trim());
+            $('#pur-year').val($cells.eq(4).text().trim());
+            $('#pur-cc').val($cells.eq(5).text().trim());
+            $('#pur-color').val($cells.eq(6).text().trim());
+            $('#pur-buy').val($cells.eq(7).text().trim());
+            $('#pur-cost').val($cells.eq(8).text().trim());
+            $('#pur-sell').val($cells.eq(9).text().trim());
+            $('#pur-date').val($cells.eq(10).text().trim().replace(/\//g, '-'));
+            const certText = $cells.eq(11).find('span').text().trim();
+            $('#pur-cert').val(certText === '可' ? '可認證' : '未通過');
+            $('#pur-note').val('');
+            new bootstrap.Modal(document.getElementById('purchaseModal')).show();
+        }
 
-                            <!-- 整體成交率 -->
-                            <div class="text-center py-3">
-                                <p class="text-muted fw-bold mb-1">整體成交率</p>
-                                <div style="font-size:52px; font-weight:900; color:#0d6efd; line-height:1;">68<span style="font-size:28px;">%</span></div>
-                                <p class="text-muted small mt-1">本月累計（截至今日）</p>
-                                <div class="progress mt-2" style="height:10px; border-radius:8px;">
-                                    <div class="progress-bar bg-primary" style="width:68%; border-radius:8px;"></div>
-                                </div>
-                            </div>
+        function savePurchaseRecord() {
+            const plate  = $('#pur-plate').val();
+            const brand  = $('#pur-brand').val();
+            const model  = $('#pur-model').val();
+            const year   = $('#pur-year').val();
+            const cc     = $('#pur-cc').val();
+            const color  = $('#pur-color').val();
+            const buy    = $('#pur-buy').val();
+            const cost   = $('#pur-cost').val();
+            const sell   = $('#pur-sell').val();
+            const date   = $('#pur-date').val().replace(/-/g, '/');
+            const cert   = $('#pur-cert').val();
+            const certBadge = cert === '可認證'
+                ? '<span class="badge bg-success">可</span>'
+                : '<span class="badge bg-danger">X</span>';
+            const $tbody = $('#purchaseTableBody');
+            if (purchaseEditRow) {
+                const $cells = $(purchaseEditRow).find('td');
+                $cells.eq(1).text(plate);
+                $cells.eq(2).text(brand);
+                $cells.eq(3).text(model);
+                $cells.eq(4).text(year);
+                $cells.eq(5).text(cc);
+                $cells.eq(6).text(color);
+                $cells.eq(7).text(buy);
+                $cells.eq(8).text(cost);
+                $cells.eq(9).text(sell);
+                $cells.eq(10).text(date);
+                $cells.eq(11).html(certBadge);
+            } else {
+                const rowCount = $tbody.find('tr').length + 1;
+                $tbody.append(`
+                    <tr>
+                        <td>${rowCount}</td><td>${plate}</td><td>${brand}</td><td>${model}</td>
+                        <td>${year}</td><td>${cc}</td><td>${color}</td>
+                        <td style="background:#e8f5e9;font-weight:bold">${buy}</td>
+                        <td style="background:#f3e5f5;font-weight:bold">${cost}</td>
+                        <td style="background:#e3f2fd;font-weight:bold">${sell}</td>
+                        <td>${date}</td>
+                        <td>${certBadge}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="openPurchaseEdit(this)">編輯</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deletePurchaseRow(this)">刪除</button>
+                        </td>
+                    </tr>`);
+            }
+            bootstrap.Modal.getInstance(document.getElementById('purchaseModal')).hide();
+        }
 
-                            <hr class="my-3">
+        function deletePurchaseRow(btn) {
+            if (confirm('確定要刪除此筆採購記錄？')) {
+                $(btn).closest('tr').remove();
+            }
+        }
 
-                            <!-- 業務小指標列 -->
-                            <div class="row g-2 text-center">
-                                <div class="col-4">
-                                    <div class="rounded p-2" style="background:#f0f4ff;">
-                                        <div class="fw-bold text-primary fs-5">42</div>
-                                        <div class="text-muted" style="font-size:11px;">接洽客戶</div>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="rounded p-2" style="background:#fff8f0;">
-                                        <div class="fw-bold text-warning fs-5">18</div>
-                                        <div class="text-muted" style="font-size:11px;">洽談中</div>
-                                    </div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="rounded p-2" style="background:#f0fff4;">
-                                        <div class="fw-bold text-success fs-5">24</div>
-                                        <div class="text-muted" style="font-size:11px;">已成交</div>
-                                    </div>
-                                </div>
-                            </div>
+        // ===== 會計記錄功能（全域） =====
+        function deleteAccRow(btn) {
+            if (confirm('確定要刪除此筆記錄？')) {
+                $(btn).closest('tr').remove();
+            }
+        }
 
-                            <!-- 各業務員成交率 -->
-                            <div class="mt-3">
-                                <p class="fw-bold small text-muted mb-2">業務員成交率</p>
-                                <div class="d-flex justify-content-between small mb-1"><span>王大明</span><span class="text-primary fw-bold">75%</span></div>
-                                <div class="progress mb-2" style="height:6px;"><div class="progress-bar bg-primary" style="width:75%;"></div></div>
-                                <div class="d-flex justify-content-between small mb-1"><span>李小華</span><span class="text-success fw-bold">62%</span></div>
-                                <div class="progress mb-2" style="height:6px;"><div class="progress-bar bg-success" style="width:62%;"></div></div>
-                                <div class="d-flex justify-content-between small mb-1"><span>陳美玲</span><span class="text-warning fw-bold">58%</span></div>
-                                <div class="progress" style="height:6px;"><div class="progress-bar bg-warning" style="width:58%;"></div></div>
-                            </div>
-                        </div>
-                    </div>
+        function openAccEdit(btn) {
+            const $cells = $(btn).closest('tr').find('td');
+            $('#accModalTitle').html('<i class="fa-solid fa-pen me-2"></i>編輯會計記錄');
+            $('#acc-plate').val($cells.eq(1).text());
+            $('#acc-brand').val($cells.eq(2).text());
+            $('#acc-model').val($cells.eq(3).text());
+            $('#acc-year').val($cells.eq(4).text());
+            $('#acc-buy').val($cells.eq(5).text());
+            $('#acc-repair').val($cells.eq(6).text());
+            $('#acc-commission').val($cells.eq(7).text());
+            $('#acc-deposit').val($cells.eq(8).text());
+            $('#acc-balance').val($cells.eq(9).text());
+            $('#acc-loan').val($cells.eq(10).text());
+            $('#acc-cert').val($cells.eq(11).text().trim());
+            $('#acc-sell').val($cells.eq(12).text());
+            $('#acc-date').val($cells.eq(13).text().trim().replace(/\//g, '-'));
+            new bootstrap.Modal(document.getElementById('accModal')).show();
+        }
 
-                    <!-- ── 財報表（月報） ── -->
-                    <div class="col-12 col-xl-4">
-                        <div class="card-box h-100">
-                            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
-                                <h5 class="fw-bold mb-0">
-                                    <i class="fa-solid fa-chart-bar me-2 text-success"></i>財報表（月報）
-                                </h5>
-                                <span class="badge bg-success">2026 年 6 月</span>
-                            </div>
+        function saveAccRecord() {
+            alert('記錄已儲存！');
+            bootstrap.Modal.getInstance(document.getElementById('accModal')).hide();
+        }
 
-                            <!-- 總庫存 / 總銷量 -->
-                            <div class="row g-3 mb-3">
-                                <div class="col-6">
-                                    <div class="card-box text-center border border-2 border-warning shadow-none py-3">
-                                        <i class="fa-solid fa-warehouse fa-lg text-warning mb-2"></i>
-                                        <div class="fw-bold text-muted small">總庫存</div>
-                                        <div style="font-size:36px; font-weight:900; color:#ffc107; line-height:1.1;">87</div>
-                                        <div class="text-muted" style="font-size:12px;">輛</div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="card-box text-center border border-2 border-success shadow-none py-3">
-                                        <i class="fa-solid fa-car-side fa-lg text-success mb-2"></i>
-                                        <div class="fw-bold text-muted small">總銷量</div>
-                                        <div style="font-size:36px; font-weight:900; color:#198754; line-height:1.1;">24</div>
-                                        <div class="text-muted" style="font-size:12px;">輛</div>
-                                    </div>
-                                </div>
-                            </div>
+        // ===== 頁面導覽（jQuery） =====
+        $(function () {
+            const $menuItems   = $('.menu-item');
+            const $pageContent = $('#pageContent');
 
-                            <!-- 月報財務摘要 -->
-                            <table class="table table-sm table-hover mb-0 small">
-                                <tbody>
-                                    <tr>
-                                        <td class="text-muted">本月營收</td>
-                                        <td class="fw-bold text-success text-end">NT$ 12,480,000</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted">本月採購成本</td>
-                                        <td class="fw-bold text-danger text-end">NT$ 8,950,000</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted">毛利</td>
-                                        <td class="fw-bold text-primary text-end">NT$ 3,530,000</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-muted">毛利率</td>
-                                        <td class="fw-bold text-primary text-end">28.3%</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+        // querySelectorAll: 抓去所有 .menu-item 的元素 (改用 jQuery)
+        function loadPage(pageName) {
+            $menuItems.removeClass('active');
+            $menuItems.filter('[data-page="' + pageName + '"]').addClass('active');
 
-                            <!-- 庫存周轉提示 -->
-                            <div class="mt-3 p-2 rounded" style="background:#f0fff4;">
-                                <div class="small text-success fw-bold"><i class="fa-solid fa-arrow-trend-up me-1"></i>庫存周轉率：本月 +5.2% ↑</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ── 車輛概覽 ── -->
-                    <div class="col-12 col-xl-4">
-                        <div class="card-box h-100">
-                            <h5 class="fw-bold mb-3 border-bottom pb-2">
-                                <i class="fa-solid fa-car me-2 text-danger"></i>車輛概覽
-                            </h5>
-
-                            <!-- 狀態分布 -->
-                            <div class="row g-2 mb-3">
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center justify-content-between card-box shadow-none border border-1 py-2 px-3">
-                                        <div>
-                                            <div class="text-muted small">可售車輛</div>
-                                            <div class="fw-bold fs-4 text-success">52 輛</div>
-                                        </div>
-                                        <i class="fa-solid fa-circle-check text-success fa-lg opacity-50"></i>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center justify-content-between card-box shadow-none border border-1 py-2 px-3">
-                                        <div>
-                                            <div class="text-muted small">維修中</div>
-                                            <div class="fw-bold fs-4 text-danger">12 輛</div>
-                                        </div>
-                                        <i class="fa-solid fa-wrench text-danger fa-lg opacity-50"></i>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center justify-content-between card-box shadow-none border border-1 py-2 px-3">
-                                        <div>
-                                            <div class="text-muted small">已預約</div>
-                                            <div class="fw-bold fs-4 text-primary">15 輛</div>
-                                        </div>
-                                        <i class="fa-solid fa-calendar-check text-primary fa-lg opacity-50"></i>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="d-flex align-items-center justify-content-between card-box shadow-none border border-1 py-2 px-3">
-                                        <div>
-                                            <div class="text-muted small">待進貨</div>
-                                            <div class="fw-bold fs-4 text-warning">8 輛</div>
-                                        </div>
-                                        <i class="fa-solid fa-truck text-warning fa-lg opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 車型分布 -->
-                            <div>
-                                <p class="fw-bold small text-muted mb-2">車型庫存分布</p>
-                                <div class="d-flex justify-content-between small mb-1"><span>轎車</span><span class="fw-bold">38 輛</span></div>
-                                <div class="progress mb-2" style="height:8px;"><div class="progress-bar bg-primary" style="width:44%;"></div></div>
-                                <div class="d-flex justify-content-between small mb-1"><span>SUV</span><span class="fw-bold">29 輛</span></div>
-                                <div class="progress mb-2" style="height:8px;"><div class="progress-bar bg-danger" style="width:33%;"></div></div>
-                                <div class="d-flex justify-content-between small mb-1"><span>商用車</span><span class="fw-bold">20 輛</span></div>
-                                <div class="progress" style="height:8px;"><div class="progress-bar bg-warning" style="width:23%;"></div></div>
-                            </div>
-
-                            <!-- 近期新入庫 -->
-                            <div class="mt-3">
-                                <p class="fw-bold small text-muted mb-2">近期新入庫</p>
-                                <div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
-                                    <span><i class="fa-solid fa-car me-1 text-primary"></i>Toyota Camry 2025</span>
-                                    <span class="badge bg-success">2026/06/03</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
-                                    <span><i class="fa-solid fa-car me-1 text-danger"></i>BMW X5 2025</span>
-                                    <span class="badge bg-success">2026/06/02</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center py-1 small">
-                                    <span><i class="fa-solid fa-car me-1 text-warning"></i>Ford Ranger 2025</span>
-                                    <span class="badge bg-success">2026/06/01</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `,
-            "車輛管理": `
-                <div class="page-title">車輛管理</div>
-                <!-- 篩選列 (Frame 1 頂部) -->
-                <div class="card-box mb-3 py-2">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-auto">
-                            <select class="form-select form-select-sm">
-                                <option>全部類別</option>
-                                <option>轎車</option>
-                                <option>SUV</option>
-                                <option>商用車</option>
-                            </select>
-                        </div>
-                        <div class="col-auto">
-                            <select class="form-select form-select-sm">
-                                <option>全部狀態</option>
-                                <option>可用</option>
-                                <option>維修中</option>
-                                <option>已預約</option>
-                            </select>
-                        </div>
-                        <div class="col">
-                            <input type="text" class="form-control form-control-sm" placeholder="搜尋車牌 / 廠牌 / 型號...">
-                        </div>
-                        <div class="col-auto">
-                            <button class="btn btn-primary btn-sm"><i class="fa-solid fa-magnifying-glass me-1"></i>搜尋</button>
-                        </div>
-                        <div class="col-auto">
-                            <button class="btn btn-outline-success btn-sm"><i class="fa-solid fa-plus me-1"></i>新增車輛</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="row g-3">
-                    <!-- 左：類型按鈕列 (Frame 1 左側) -->
-                    <div class="col-lg-2">
-                        <div class="card-box p-2">
-                            <p class="small text-muted fw-bold mb-2 text-center">配件 / 服務類型</p>
-                            <div class="d-grid gap-1">
-                                <button class="btn btn-sm btn-primary">基礎配件</button>
-                                <button class="btn btn-sm btn-outline-secondary">保養服務</button>
-                                <button class="btn btn-sm btn-outline-secondary">輪胎輪圈</button>
-                                <button class="btn btn-sm btn-outline-secondary">音響配備</button>
-                                <button class="btn btn-sm btn-outline-secondary">安全配備</button>
-                                <button class="btn btn-sm btn-outline-secondary">外觀套件</button>
-                                <button class="btn btn-sm btn-outline-secondary">其他</button>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 中：AI 內容區 + 項目清單 (Frame 1 中央) -->
-                    <div class="col-lg-6">
-                        <div class="card-box">
-                            <h5 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-wand-magic-sparkles me-2 text-primary"></i>AI 輔助內容生成區</h5>
-                            <div class="p-3 bg-light border rounded text-center mb-3">
-                                <i class="fa-solid fa-robot fa-2xl text-muted mb-2 d-block"></i>
-                                <p class="mb-0 text-muted fw-bold">根據按鈕產生內容</p>
-                                <p class="mb-0 text-muted small">點選左側類型按鈕，系統將自動帶入對應項目</p>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>項目名稱</th>
-                                            <th>規格</th>
-                                            <th>單價</th>
-                                            <th>庫存</th>
-                                            <th>操作</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="fw-bold">基礎機油更換</td>
-                                            <td class="text-muted small">5W-30 4L</td>
-                                            <td>$1,200</td>
-                                            <td><span class="badge bg-success">充足</span></td>
-                                            <td><button class="btn btn-sm btn-outline-primary">選取</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td class="fw-bold">空氣濾芯更換</td>
-                                            <td class="text-muted small">通用型</td>
-                                            <td>$350</td>
-                                            <td><span class="badge bg-warning text-dark">不足</span></td>
-                                            <td><button class="btn btn-sm btn-outline-primary">選取</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td class="fw-bold">煞車來令片</td>
-                                            <td class="text-muted small">前輪組</td>
-                                            <td>$2,800</td>
-                                            <td><span class="badge bg-success">充足</span></td>
-                                            <td><button class="btn btn-sm btn-outline-primary">選取</button></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 右：表單區 (Frame 2) -->
-                    <div class="col-lg-4">
-                        <div class="card-box mb-3">
-                            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2"><i class="fa-solid fa-pen-to-square me-2 text-success"></i>新增 / 編輯車輛</h5>
-                            <form>
-                                <div class="mb-2">
-                                    <label class="form-label small fw-bold">車牌號碼</label>
-                                    <input type="text" class="form-control form-control-sm" placeholder="請輸入車牌">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small fw-bold">廠牌型號</label>
-                                    <input type="text" class="form-control form-control-sm" placeholder="請輸入廠牌型號">
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small fw-bold">車輛類型</label>
-                                    <select class="form-select form-select-sm">
-                                        <option>請選擇類型</option>
-                                        <option>轎車</option>
-                                        <option>SUV</option>
-                                        <option>商用車</option>
-                                    </select>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small fw-bold">出廠年份</label>
-                                    <input type="number" class="form-control form-control-sm" placeholder="YYYY" min="1990" max="2030">
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label small fw-bold">關聯綁定識別碼</label>
-                                    <input type="text" class="form-control form-control-sm" value="001-A12" readonly>
-                                </div>
-                                <div class="d-grid">
-                                    <button type="button" class="btn btn-success btn-sm fw-bold">儲存並應用配置</button>
-                                </div>
-                            </form>
-                        </div>
-                        <!-- Frame 2：篩選設定 -->
-                        <div class="card-box">
-                            <h6 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-list-check me-2"></i>主資料篩選設定</h6>
-                            <div class="mb-2">
-                                <label class="form-label small text-muted">檢視權限</label>
-                                <select class="form-select form-select-sm">
-                                    <option>公開</option>
-                                    <option>私有</option>
-                                    <option>群組限定</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label small text-muted">過濾條件</label>
-                                <select class="form-select form-select-sm">
-                                    <option>包含</option>
-                                    <option>不包含</option>
-                                    <option>等於</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `,
-            "客戶管理": `
-                <div class="page-title">客戶管理</div>
-                <div class="card-box">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold mb-0"><i class="fa-solid fa-wrench me-2 text-warning"></i>維修紀錄管理</h5>
-                        <button class="btn btn-sm btn-success fw-bold"><i class="fa-solid fa-plus me-1"></i>新增維修紀錄</button>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>項目名稱</th>
-                                    <th>起始里程</th>
-                                    <th>結束里程</th>
-                                    <th class="text-end">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="fw-bold">測試 2025</td>
-                                    <td class="text-muted">起碼 001</td>
-                                    <td class="text-muted">超碼 001</td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i> 編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i> 刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold">測試 2027</td>
-                                    <td class="text-muted">起碼 001</td>
-                                    <td class="text-muted">超碼 001</td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i> 編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i> 刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold">測試 0523</td>
-                                    <td class="text-muted">起碼 001</td>
-                                    <td class="text-muted">超碼 001</td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-primary me-1"><i class="fa-solid fa-pen"></i> 編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i> 刪除</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `,
-            "會計頁面": `
-                <div class="page-title mb-3">會計頁面</div>
-                <ul class="nav nav-tabs mb-4" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#pane-acc" type="button" role="tab">
-                            <i class="fa-solid fa-calculator me-2"></i>會計記錄
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#pane-pur" type="button" role="tab">
-                            <i class="fa-solid fa-cart-shopping me-2"></i>採購管理
-                        </button>
-                    </li>
-                </ul>
-                <div class="tab-content">
-                <!-- ===== 會計記錄 Tab ===== -->
-                <div class="tab-pane fade show active" id="pane-acc" role="tabpanel">
-                <!-- 頂部工具列 -->
-                <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 mb-4">
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <div class="input-group input-group-sm" style="width:220px">
-                            <span class="input-group-text"><i class="fa-solid fa-calendar-days"></i></span>
-                            <input type="date" class="form-control" id="acc-date-start" value="2025-05-01">
-                            <span class="input-group-text">-</span>
-                            <input type="date" class="form-control" id="acc-date-end" value="2025-06-04">
-                        </div>
-                        <input type="text" class="form-control form-control-sm" placeholder="搜尋車牌 / 編號 / 廠牌" style="width:200px">
-                        <button class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-filter me-1"></i>篩選</button>
-                        <button class="btn btn-sm btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#accModal"><i class="fa-solid fa-plus me-1"></i>新增會計記錄</button>
-                    </div>
-                </div>
-
-                <!-- KPI 卡片 -->
-                <div class="row g-3 mb-4">
-                    <div class="col-6 col-md-4 col-xl">
-                        <div class="card-box text-center py-3">
-                            <p class="text-muted small mb-1 fw-bold">本月收車總數</p>
-                            <h4 class="fw-bold mb-0">18 台</h4>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-xl">
-                        <div class="card-box text-center py-3">
-                            <p class="text-muted small mb-1 fw-bold">本月收車總價</p>
-                            <h4 class="fw-bold mb-0">\$ 1,280,000</h4>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-xl">
-                        <div class="card-box text-center py-3">
-                            <p class="text-muted small mb-1 fw-bold">本月整備總價</p>
-                            <h4 class="fw-bold mb-0">\$ 420,000</h4>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-xl">
-                        <div class="card-box text-center py-3">
-                            <p class="text-muted small mb-1 fw-bold">本月業務抽成</p>
-                            <h4 class="fw-bold mb-0">\$ 72,000</h4>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-xl">
-                        <div class="card-box text-center py-3" style="border-top:3px solid #E8A020">
-                            <p class="small mb-1 fw-bold" style="color:#E8A020">本月貸款金額</p>
-                            <h4 class="fw-bold mb-0" style="color:#E8A020">\$ 960,000</h4>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-xl">
-                        <div class="card-box text-center py-3" style="border-top:3px solid #E8A020">
-                            <p class="small mb-1 fw-bold" style="color:#E8A020">本月尾款金額</p>
-                            <h4 class="fw-bold mb-0" style="color:#E8A020">\$ 320,000</h4>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-4 col-xl">
-                        <div class="card-box text-center py-3">
-                            <p class="text-muted small mb-1 fw-bold">本月已成交數</p>
-                            <h4 class="fw-bold mb-0">9 台</h4>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 資料表格 -->
-                <div class="card-box mb-4">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle text-center mb-0 small">
-                            <thead>
-                                <tr style="background:#f5f7ff">
-                                    <th>編號</th>
-                                    <th>車牌號碼</th>
-                                    <th>廠牌</th>
-                                    <th>車輛型式</th>
-                                    <th>年份</th>
-                                    <th>收車價</th>
-                                    <th>整備價</th>
-                                    <th>業務抽成</th>
-                                    <th>訂金</th>
-                                    <th>尾款</th>
-                                    <th>貸款(金額/期數)</th>
-                                    <th>認證</th>
-                                    <th>售價</th>
-                                    <th>成交日期</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="accTableBody">
-                                <tr>
-                                    <td>01</td><td>ABC1234</td><td>賓士</td><td>S400</td><td>2016</td>
-                                    <td>60</td><td>20</td><td>2.4</td><td>10</td><td>90</td><td>0/0</td>
-                                    <td>可</td><td>100</td><td>2026/06/04</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openAccEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>02</td><td>DEF5678</td><td>BMW</td><td>520i</td><td>2018</td>
-                                    <td>55</td><td>18</td><td>2.2</td><td>10</td><td>85</td><td>0/0</td>
-                                    <td>可</td><td>90</td><td>2026/06/02</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openAccEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>03</td><td>GHI9012</td><td>Audi</td><td>A4</td><td>2017</td>
-                                    <td>50</td><td>15</td><td>2.0</td><td>10</td><td>75</td><td>0/0</td>
-                                    <td>可</td><td>80</td><td>2026/06/01</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openAccEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>04</td><td>JKL3456</td><td>Toyota</td><td>Camry</td><td>2019</td>
-                                    <td>40</td><td>12</td><td>1.6</td><td>10</td><td>62</td><td>0/0</td>
-                                    <td>可</td><td>65</td><td>2026/05/31</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openAccEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>05</td><td>MNO7890</td><td>Honda</td><td>CR-V</td><td>2020</td>
-                                    <td>45</td><td>14</td><td>1.8</td><td>10</td><td>66</td><td>0/0</td>
-                                    <td>可</td><td>70</td><td>2026/05/30</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openAccEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>06</td><td>PQR1122</td><td>Ford</td><td>Kuga</td><td>2018</td>
-                                    <td>35</td><td>10</td><td>1.4</td><td>10</td><td>52</td><td>0/0</td>
-                                    <td>可</td><td>55</td><td>2026/05/29</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openAccEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>07</td><td>STU3344</td><td>Nissan</td><td>X-Trail</td><td>2017</td>
-                                    <td>32</td><td>10</td><td>1.3</td><td>10</td><td>48</td><td>0/0</td>
-                                    <td>可</td><td>52</td><td>2026/05/28</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openAccEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <!-- 分頁 -->
-                    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
-                        <small class="text-muted">顯示第 1 至 7 筆，共 7 筆</small>
-                        <nav>
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item disabled"><a class="page-link">上一頁</a></li>
-                                <li class="page-item active"><a class="page-link">1</a></li>
-                                <li class="page-item disabled"><a class="page-link">下一頁</a></li>
-                            </ul>
-                        </nav>
-                    </div>
-                </div>
-
-                <!-- 底部統計列 -->
-                <div class="card-box">
-                    <div class="row g-3 text-center">
-                        <div class="col">
-                            <p class="text-muted small mb-1">收車總價</p>
-                            <h5 class="fw-bold mb-0">372</h5>
-                        </div>
-                        <div class="col">
-                            <p class="text-muted small mb-1">整備總價</p>
-                            <h5 class="fw-bold mb-0">99</h5>
-                        </div>
-                        <div class="col">
-                            <p class="text-muted small mb-1">業務抽成</p>
-                            <h5 class="fw-bold mb-0">12.7</h5>
-                        </div>
-                        <div class="col">
-                            <p class="text-muted small mb-1">訂金總額</p>
-                            <h5 class="fw-bold mb-0">70</h5>
-                        </div>
-                        <div class="col">
-                            <p class="text-muted small mb-1">尾款總額</p>
-                            <h5 class="fw-bold mb-0">478</h5>
-                        </div>
-                        <div class="col">
-                            <p class="text-muted small mb-1">貸款總額</p>
-                            <h5 class="fw-bold mb-0" style="color:#E8A020">0 (0/0)</h5>
-                        </div>
-                        <div class="col">
-                            <p class="text-muted small mb-1">平均售價</p>
-                            <h5 class="fw-bold mb-0">66.0</h5>
-                        </div>
-                        <div class="col">
-                            <p class="text-muted small mb-1">已成交台數</p>
-                            <h5 class="fw-bold mb-0">7 台</h5>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 新增/編輯 Modal -->
-                <div class="modal fade" id="accModal" tabindex="-1">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title fw-bold" id="accModalTitle"><i class="fa-solid fa-calculator me-2"></i>新增會計記錄</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label small fw-bold">車牌號碼</label>
-                                        <input type="text" class="form-control form-control-sm" id="acc-plate" placeholder="例：ABC1234">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label small fw-bold">廠牌</label>
-                                        <input type="text" class="form-control form-control-sm" id="acc-brand" placeholder="例：Toyota">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label small fw-bold">車輛型式</label>
-                                        <input type="text" class="form-control form-control-sm" id="acc-model" placeholder="例：Camry">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-bold">年份</label>
-                                        <input type="number" class="form-control form-control-sm" id="acc-year" placeholder="2020">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-bold">收車價(萬)</label>
-                                        <input type="number" class="form-control form-control-sm" id="acc-buy">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-bold">整備價(萬)</label>
-                                        <input type="number" class="form-control form-control-sm" id="acc-repair">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-bold">業務抽成(萬)</label>
-                                        <input type="number" class="form-control form-control-sm" id="acc-commission" step="0.1">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-bold">訂金(萬)</label>
-                                        <input type="number" class="form-control form-control-sm" id="acc-deposit">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label small fw-bold">尾款(萬)</label>
-                                        <input type="number" class="form-control form-control-sm" id="acc-balance">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">貸款金額/期數</label>
-                                        <input type="text" class="form-control form-control-sm" id="acc-loan" placeholder="0/0">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">認證</label>
-                                        <select class="form-select form-select-sm" id="acc-cert">
-                                            <option>可</option>
-                                            <option>否</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">售價(萬)</label>
-                                        <input type="number" class="form-control form-control-sm" id="acc-sell">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-bold">成交日期</label>
-                                        <input type="date" class="form-control form-control-sm" id="acc-date">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                <button type="button" class="btn btn-primary fw-bold" onclick="saveAccRecord()">儲存記錄</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <script>
-                    function deleteAccRow(btn) {
-                        if (confirm('確定要刪除此筆記錄？')) {
-                            btn.closest('tr').remove();
-                        }
-                    }
-                    function openAccEdit(btn) {
-                        const row = btn.closest('tr');
-                        const cells = row.querySelectorAll('td');
-                        document.getElementById('accModalTitle').innerHTML = '<i class="fa-solid fa-pen me-2"></i>編輯會計記錄';
-                        document.getElementById('acc-plate').value = cells[1].textContent;
-                        document.getElementById('acc-brand').value = cells[2].textContent;
-                        document.getElementById('acc-model').value = cells[3].textContent;
-                        document.getElementById('acc-year').value = cells[4].textContent;
-                        document.getElementById('acc-buy').value = cells[5].textContent;
-                        document.getElementById('acc-repair').value = cells[6].textContent;
-                        document.getElementById('acc-commission').value = cells[7].textContent;
-                        document.getElementById('acc-deposit').value = cells[8].textContent;
-                        document.getElementById('acc-balance').value = cells[9].textContent;
-                        document.getElementById('acc-loan').value = cells[10].textContent;
-                        document.getElementById('acc-cert').value = cells[11].textContent.trim();
-                        document.getElementById('acc-sell').value = cells[12].textContent;
-                        const dateStr = cells[13].textContent.trim().replace(/\//g, '-');
-                        document.getElementById('acc-date').value = dateStr;
-                        new bootstrap.Modal(document.getElementById('accModal')).show();
-                    }
-                    function saveAccRecord() {
-                        alert('記錄已儲存！');
-                        bootstrap.Modal.getInstance(document.getElementById('accModal')).hide();
-                    }
-                <\/script>
-                </div><!-- /pane-acc -->
-                <!-- ===== 採購管理 Tab ===== -->
-                <div class="tab-pane fade" id="pane-pur" role="tabpanel">
-                <!-- 頂部工具列 -->
-                <div class="d-flex align-items-center justify-content-end mb-4 flex-wrap gap-2">
-                    <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#purchaseModal" onclick="openPurchaseAdd()">
-                        <i class="fa-solid fa-plus me-1"></i>新增+
-                    </button>
-                </div>
-
-                <!-- 資料表格 -->
-                <div class="card-box mb-4">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle text-center mb-0 small">
-                            <thead>
-                                <tr style="background:#f5f7ff">
-                                    <th>編號</th>
-                                    <th>車牌號碼</th>
-                                    <th>廠牌</th>
-                                    <th>車輛型式</th>
-                                    <th>年份</th>
-                                    <th>CC</th>
-                                    <th>顏色</th>
-                                    <th style="background:#4CAF50;color:#fff">進價(萬)</th>
-                                    <th style="background:#9C27B0;color:#fff">成本價(萬)</th>
-                                    <th style="background:#2196F3;color:#fff">售價(萬)</th>
-                                    <th>收車日期</th>
-                                    <th>認證</th>
-                                    <th>操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="purchaseTableBody">
-                                <tr>
-                                    <td>1</td><td>ABC-1234</td><td>賓士</td><td>S400</td><td>2016</td><td>3.0C</td><td>黑</td>
-                                    <td style="background:#e8f5e9;font-weight:bold">100</td>
-                                    <td style="background:#f3e5f5;font-weight:bold">30</td>
-                                    <td style="background:#e3f2fd;font-weight:bold">150</td>
-                                    <td>2026/06/01</td>
-                                    <td><span class="badge bg-success">可</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openPurchaseEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deletePurchaseRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>2</td><td>CBA-4321</td><td>MAZDA</td><td>馬三</td><td>2018</td><td>2.0C</td><td>灰</td>
-                                    <td style="background:#e8f5e9;font-weight:bold">33</td>
-                                    <td style="background:#f3e5f5;font-weight:bold">15</td>
-                                    <td style="background:#e3f2fd;font-weight:bold">55</td>
-                                    <td>2026/06/02</td>
-                                    <td><span class="badge bg-danger">X</span></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openPurchaseEdit(this)">編輯</button>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deletePurchaseRow(this)">刪除</button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 新增/編輯 Modal -->
-                <div class="modal fade" id="purchaseModal" tabindex="-1">
-                    <div class="modal-dialog modal-lg">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title fw-bold" id="purchaseModalTitle"><i class="fa-solid fa-cart-shopping me-2"></i>新增採購記錄</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">廠牌 <span class="text-muted fw-normal">格式:文字, 上限50</span></label>
-                                        <input type="text" class="form-control form-control-sm" id="pur-brand" maxlength="50" placeholder="例：Toyota">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">車輛型式 <span class="text-muted fw-normal">格式:文字, 上限50</span></label>
-                                        <input type="text" class="form-control form-control-sm" id="pur-model" maxlength="50" placeholder="例：Camry">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">年份 <span class="text-muted fw-normal">格式:時間, 西元年</span></label>
-                                        <input type="number" class="form-control form-control-sm" id="pur-year" placeholder="例：2020" min="1990" max="2099">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">CC <span class="text-muted fw-normal">格式:文字, 上限50</span></label>
-                                        <input type="text" class="form-control form-control-sm" id="pur-cc" maxlength="50" placeholder="例：2.0C">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label small fw-bold">進價(萬) <span class="text-muted fw-normal">格式:數字</span></label>
-                                        <input type="number" class="form-control form-control-sm" id="pur-buy" step="0.1">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label small fw-bold">成本價(萬) <span class="text-muted fw-normal">格式:數字</span></label>
-                                        <input type="number" class="form-control form-control-sm" id="pur-cost" step="0.1">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label small fw-bold">售價(萬) <span class="text-muted fw-normal">格式:數字</span></label>
-                                        <input type="number" class="form-control form-control-sm" id="pur-sell" step="0.1">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">車牌號碼 <span class="text-muted fw-normal">格式:文字, 上限10</span></label>
-                                        <input type="text" class="form-control form-control-sm" id="pur-plate" maxlength="10" placeholder="例：ABC-1234">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">汽車顏色 <span class="text-muted fw-normal">格式:文字, 上限10</span></label>
-                                        <input type="text" class="form-control form-control-sm" id="pur-color" maxlength="10" placeholder="例：黑">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">收車日期 <span class="text-muted fw-normal">格式:時間, 西元年</span></label>
-                                        <input type="date" class="form-control form-control-sm" id="pur-date">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-bold">認證狀態 <span class="text-muted fw-normal">下拉選單 格式:布林 只有是或否</span></label>
-                                        <select class="form-select form-select-sm" id="pur-cert">
-                                            <option value="可認證">可認證</option>
-                                            <option value="未通過">未通過</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold">備註 <span class="text-muted fw-normal">格式:文字, 上限:待定</span></label>
-                                        <textarea class="form-control form-control-sm" id="pur-note" rows="3" placeholder="備註內容..."></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                <button type="button" class="btn btn-primary fw-bold" onclick="savePurchaseRecord()">儲存</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <script>
-                    let purchaseEditRow = null;
-
-                    function openPurchaseAdd() {
-                        purchaseEditRow = null;
-                        document.getElementById('purchaseModalTitle').innerHTML = '<i class="fa-solid fa-cart-shopping me-2"></i>新增採購記錄';
-                        ['pur-brand','pur-model','pur-year','pur-cc','pur-buy','pur-cost','pur-sell','pur-plate','pur-color','pur-note'].forEach(id => document.getElementById(id).value = '');
-                        document.getElementById('pur-cert').value = '可認證';
-                        document.getElementById('pur-date').value = '';
-                    }
-
-                    function openPurchaseEdit(btn) {
-                        purchaseEditRow = btn.closest('tr');
-                        const cells = purchaseEditRow.querySelectorAll('td');
-                        document.getElementById('purchaseModalTitle').innerHTML = '<i class="fa-solid fa-pen me-2"></i>編輯採購記錄';
-                        document.getElementById('pur-plate').value  = cells[1].textContent.trim();
-                        document.getElementById('pur-brand').value  = cells[2].textContent.trim();
-                        document.getElementById('pur-model').value  = cells[3].textContent.trim();
-                        document.getElementById('pur-year').value   = cells[4].textContent.trim();
-                        document.getElementById('pur-cc').value     = cells[5].textContent.trim();
-                        document.getElementById('pur-color').value  = cells[6].textContent.trim();
-                        document.getElementById('pur-buy').value    = cells[7].textContent.trim();
-                        document.getElementById('pur-cost').value   = cells[8].textContent.trim();
-                        document.getElementById('pur-sell').value   = cells[9].textContent.trim();
-                        document.getElementById('pur-date').value   = cells[10].textContent.trim().replace(/\\//g, '-');
-                        const certText = cells[11].querySelector('span').textContent.trim();
-                        document.getElementById('pur-cert').value   = certText === '可' ? '可認證' : '未通過';
-                        document.getElementById('pur-note').value   = '';
-                        new bootstrap.Modal(document.getElementById('purchaseModal')).show();
-                    }
-
-                    function savePurchaseRecord() {
-                        const plate  = document.getElementById('pur-plate').value;
-                        const brand  = document.getElementById('pur-brand').value;
-                        const model  = document.getElementById('pur-model').value;
-                        const year   = document.getElementById('pur-year').value;
-                        const cc     = document.getElementById('pur-cc').value;
-                        const color  = document.getElementById('pur-color').value;
-                        const buy    = document.getElementById('pur-buy').value;
-                        const cost   = document.getElementById('pur-cost').value;
-                        const sell   = document.getElementById('pur-sell').value;
-                        const date   = document.getElementById('pur-date').value.replace(/-/g, '/');
-                        const cert   = document.getElementById('pur-cert').value;
-                        const certBadge = cert === '可認證'
-                            ? '<span class="badge bg-success">可</span>'
-                            : '<span class="badge bg-danger">X</span>';
-                        const tbody = document.getElementById('purchaseTableBody');
-                        if (purchaseEditRow) {
-                            const cells = purchaseEditRow.querySelectorAll('td');
-                            cells[1].textContent = plate;
-                            cells[2].textContent = brand;
-                            cells[3].textContent = model;
-                            cells[4].textContent = year;
-                            cells[5].textContent = cc;
-                            cells[6].textContent = color;
-                            cells[7].textContent = buy;
-                            cells[8].textContent = cost;
-                            cells[9].textContent = sell;
-                            cells[10].textContent = date;
-                            cells[11].innerHTML = certBadge;
-                        } else {
-                            const rowCount = tbody.rows.length + 1;
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = \`
-                                <td>\${rowCount}</td><td>\${plate}</td><td>\${brand}</td><td>\${model}</td>
-                                <td>\${year}</td><td>\${cc}</td><td>\${color}</td>
-                                <td style="background:#e8f5e9;font-weight:bold">\${buy}</td>
-                                <td style="background:#f3e5f5;font-weight:bold">\${cost}</td>
-                                <td style="background:#e3f2fd;font-weight:bold">\${sell}</td>
-                                <td>\${date}</td>
-                                <td>\${certBadge}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary me-1" onclick="openPurchaseEdit(this)">編輯</button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deletePurchaseRow(this)">刪除</button>
-                                </td>\`;
-                            tbody.appendChild(tr);
-                        }
-                        bootstrap.Modal.getInstance(document.getElementById('purchaseModal')).hide();
-                    }
-
-                    function deletePurchaseRow(btn) {
-                        if (confirm('確定要刪除此筆採購記錄？')) {
-                            btn.closest('tr').remove();
-                        }
-                    }
-                <\/script>
-                </div><!-- /pane-pur -->
-                </div><!-- /tab-content -->
-            `,
-            "文件管理": `
-                <div class="page-title">核心 JSON 資料結構 (Frame 1 右下)</div>
-                <div class="card-box">
-                    <h5 class="mb-3 fw-bold text-dark border-bottom pb-2"><i class="fa-solid fa-code me-2"></i>元數據定義檔</h5>
-                    <pre class="bg-dark text-success p-3 rounded" style="font-family: monospace; font-size: 14px;"><code>{
-  "component_id": "CAR-2026-SYS",
-  "layout": {
-    "frame_1": "main_workflow",
-    "frame_2": "input_form"
-  }
-}</code></pre>
-                </div>
-            `
-        };
-
-        // querySelectorAll: 抓去所有 .menu-item 的元素
-        const menuItems = document.querySelectorAll(".menu-item"); // 取得所有選單選項
-        const pageContent = document.getElementById("pageContent");// 取得內容區
-
-        // 載入初始頁面（儀錶板）
-        pageContent.innerHTML = pageTemplates["儀錶板"];
-
-        // 將每個選項綁定 click事件
-        menuItems.forEach(item => {
-            item.addEventListener("click", function () {
-
-                // 取消所有的 active
-                menuItems.forEach(x =>
-                    x.classList.remove("active")
+            if (pageName === '儀錶板') {
+                $pageContent.html('<div class="text-center py-5 text-muted"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p class="mt-3">載入中…</p></div>');
+                $pageContent.load('Dashboard/dashboard-content.html');
+            } else if (pageName === '會計頁面') {
+                $pageContent.html('<div class="text-center py-5 text-muted"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p class="mt-3">載入中…</p></div>');
+                $pageContent.load('Purchase/purchase-content.html');
+            } else {
+                $pageContent.html(
+                    '<div class="page-title">' + pageName + '</div>' +
+                    '<div class="card-box text-center py-5 text-muted">' +
+                    '<i class="fa-solid fa-hammer fa-2x mb-3 d-block"></i>' +
+                    '<p class="mb-0 fw-bold">「' + pageName + '」頁面建置中…</p></div>'
                 );
+            }
+        }
 
-                // 給目前點擊的選單 active
-                this.classList.add("active");
+        // 初始載入儀錶板
+        loadPage('儀錶板');
 
-                // 取得 dataset.page
-                let pageName = this.dataset.page;
-
-                // 若 pageTemplates 有對應頁面則使用，否則顯示預設內容
-                pageContent.innerHTML = pageTemplates[pageName] ?? `
-                    <div class="page-title">${pageName}</div>
-                    <div class="card-box">
-                        <p>這裡放置「${pageName}」功能內容</p>
-                    </div>`;
-            });
+        // 將每個選項綁定 click 事件
+        $menuItems.on('click', function () {
+            loadPage($(this).data('page'));
         });
+
+        }); // end $(function)
 
     </script>
 
